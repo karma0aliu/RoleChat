@@ -1,0 +1,20 @@
+server:
+	port: "8080"
+	mode: "debug"
+
+database:
+	host: "localhost"
+	port: 5482
+	user: "postgres"
+	password: "postgres"
+	dbname: "rolechat"
+	sslmode: "disable"
+
+log:
+	level: "info"
+
+jwt:
+	access_secret: "CHANGE_ME_ACCESS"
+	refresh_secret: "CHANGE_ME_REFRESH"
+	access_expires_mins: 10
+	refresh_expires_hours: 24 

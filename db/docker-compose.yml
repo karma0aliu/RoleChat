@@ -1,0 +1,29 @@
+# 使用 docker-compose 的版本号
+# version: '3.8'
+
+services:
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_DB: db_verify
+      POSTGRES_USER: verify_user01
+      POSTGRES_PASSWORD: mydocverifyuser01
+    ports:
+      - "5482:5482"
+    volumes:
+      - rolechat_postgres_data:/var/lib/postgresql/data
+
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+    - "6379:6379"
+    volumes:
+      - rolechat_redis_data:/data
+    command: redis-server --requirepass rolechatback01
+
+volumes:
+  rolechat_postgres_data:
+  rolechat_redis_data:

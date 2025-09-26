@@ -14,7 +14,6 @@ type JWTClaims struct {
 	jwt.RegisteredClaims
 }
 
-// GenerateToken creates a JWT with custom token type and duration.
 func GenerateToken(userID uint, role, status, tokenType, secret, jti string, expires time.Duration) (string, error) {
 	if expires <= 0 {
 		expires = 15 * time.Minute

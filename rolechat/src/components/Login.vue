@@ -9,8 +9,9 @@
             <span class="form__span">使用邮箱注册</span>
             <input class="form__input" type="text" placeholder="Name" v-model="signUpName" required>
             <input class="form__input" type="email" placeholder="Email" v-model="signUpEmail" required>
-            <input class="form__input" type="password" placeholder="Password" v-model="signUpPassword" required>
-            <button class="form__button button submit">SIGN UP</button>
+            <input class="form__input" type="password" placeholder="Password (>=6 chars)" v-model="signUpPassword" required>
+            <div v-if="signUpError" class="form__error">{{ signUpError }}</div>
+            <button class="form__button button submit" :disabled="signUpLoading">{{ signUpLoading ? '注册中...' : 'SIGN UP' }}</button>
             </form>
         </div>
 
@@ -49,14 +50,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { setAuth } from '../auth';
 
 const router = useRouter();
+const route = useRoute();
 
 const signUpName = ref('');
 const signUpEmail = ref('');
 const signUpPassword = ref('');
+const signUpLoading = ref(false);
+const signUpError = ref('');
 const signInEmail = ref('');
 const signInPassword = ref('');
 const isLoading = ref(false);
@@ -87,11 +92,65 @@ bContainer.value.classList.toggle("is-txl");
 bContainer.value.classList.toggle("is-z200");
 };
 
-const handleSignUp = () => {
-console.log("Sign Up form submitted");
-console.log("Name:", signUpName.value);
-console.log("Email:", signUpEmail.value);
-console.log("Password:", signUpPassword.value);
+const API_BASE = 'http://127.0.0.1:8080/api';
+
+const handleSignUp = async () => {
+    signUpError.value = '';
+    if (!signUpName.value.trim()) { signUpError.value = '请输入名称'; return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(signUpEmail.value)) { signUpError.value = '邮箱格式不正确'; return; }
+    if (signUpPassword.value.length < 6) { signUpError.value = '密码至少 6 位'; return; }
+    signUpLoading.value = true;
+    try {
+        const REGISTER_ENDPOINT = API_BASE + '/auth/register';
+        const payload = {
+            username: signUpName.value,
+            email: signUpEmail.value,
+            password: signUpPassword.value,
+            nickname: signUpName.value
+        };
+        const res = await fetch(REGISTER_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error(data.detail || data.message || '注册失败');
+        }
+        let access = data.access_token || data.access || data.token || '';
+        let refresh = data.refresh_token || data.refresh || '';
+        let user = data.user;
+
+        if (!access) {
+            const loginRes = await fetch(API_BASE + '/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: signUpEmail.value, password: signUpPassword.value })
+            });
+            const loginData = await loginRes.json();
+            if (!loginRes.ok) throw new Error(loginData.detail || '注册成功但自动登录失败');
+            access = loginData.access_token;
+            refresh = loginData.refresh_token;
+            user = loginData.user;
+        }
+        if (!access) throw new Error('没有收到访问令牌');
+                if (refresh) localStorage.setItem('refreshToken', refresh);
+                // 构造最终用户对象：优先后端返回，其次使用注册表单中的名称
+                const finalUser = user
+                    ? {
+                            username: user.username || user.name || signUpName.value,
+                            email: user.email || signUpEmail.value,
+                            nickname: user.nickname || user.display_name || user.name || signUpName.value
+                        }
+                    : { username: signUpName.value, email: signUpEmail.value, nickname: signUpName.value };
+                setAuth(access, finalUser);
+        const redirect = '/app/new';
+        router.push(redirect);
+    } catch (e) {
+        signUpError.value = e.message || '发生未知错误';
+    } finally {
+        signUpLoading.value = false;
+    }
 };
 
 const handleSignIn = async () => {
@@ -99,10 +158,10 @@ const handleSignIn = async () => {
     errorMessage.value = '';
 
     try {
-        const apiUrl = "http://127.0.0.1:8000/api/users/login/";
+    const apiUrl = API_BASE + '/auth/login';
 
         const payload = {
-            username: signInEmail.value,
+            email: signInEmail.value,
             password: signInPassword.value
         };
 
@@ -119,21 +178,22 @@ const handleSignIn = async () => {
         }
 
 
-        const accessToken = data.access;
-        const refreshToken = data.refresh;
+        const accessToken = data.access_token;
+        const refreshToken = data.refresh_token;
+        if (!accessToken) throw new Error('服务器返回的数据中不包含 access_token。');
 
-        if (accessToken) {
-            localStorage.setItem('accessToken', accessToken);
-            if (refreshToken) {
-                localStorage.setItem('refreshToken', refreshToken);
-            }
+                if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
+                        const loginUser = data.user
+                            ? {
+                                    username: data.user.username || data.user.name || signInEmail.value,
+                                    email: data.user.email || signInEmail.value,
+                                    nickname: data.user.nickname || data.user.display_name || data.user.name || data.user.username || signInEmail.value.split('@')[0]
+                                }
+                            : { username: signInEmail.value, email: signInEmail.value, nickname: signInEmail.value.split('@')[0] };
+                setAuth(accessToken, loginUser);
 
-            console.log("登录成功，Access Token 和 Refresh Token 已保存!");
-
-            router.push('/admin');
-        } else {
-            throw new Error('服务器返回的数据中不包含 access_token。');
-        }
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/app/new';
+        router.push(redirect);
 
     } catch (error) {
         console.error("登录过程中发生错误:", error);

@@ -27,7 +27,6 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
-	// In a full implementation we'd call h.Service.GetByID
 	_ = userIDVal
 	c.JSON(http.StatusOK, gin.H{"user_id": userIDVal})
 }
@@ -58,7 +57,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 		"user_id":           user.ID,
 		"access_token":      access,
 		"refresh_token":     refresh,
-		"access_expires_at": time.Now().Add(15 * time.Minute).Unix(), // TODO: optionally decode to get exact
+		"access_expires_at": time.Now().Add(15 * time.Minute).Unix(),
 	})
 }
 
@@ -91,10 +90,10 @@ func (h *UserHandler) Refresh(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	access, refresh, err := h.Service.RefreshTokens(req.RefreshToken)
+	access, err := h.Service.RefreshAccessToken(req.RefreshToken)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"access_token": access, "refresh_token": refresh})
+	c.JSON(http.StatusOK, gin.H{"access_token": access})
 }

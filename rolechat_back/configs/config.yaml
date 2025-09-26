@@ -1,20 +1,23 @@
 server:
-	port: "8080"
-	mode: "debug"
+  port: "8080"        # ServerConfig.Port 是 string
+  mode: "debug"
 
 database:
-	host: "localhost"
-	port: 5482
-	user: "postgres"
-	password: "postgres"
-	dbname: "rolechat"
-	sslmode: "disable"
-
+  host: "localhost"
+  port: 5432
+  user: "rolechat_user01"
+  password: "rolechatuser01"
+  dbname: "db_rolechat"
+  sslmode: "disable"
+ 
 log:
-	level: "info"
+  level: "info"
 
 jwt:
-	access_secret: "CHANGE_ME_ACCESS"
-	refresh_secret: "CHANGE_ME_REFRESH"
-	access_expires_mins: 10
-	refresh_expires_hours: 24 
+  access_secret: "w3lJf9eGqJjJ2dJ0tJ6jJ6rJf8rPq4xKb9yJd5mNc0sQv2gTjKpScw"
+  refresh_secret: "Zt8qKp4yVd9tFs2mQw6rXy7hLp1vNo3sGc8bRk5uXf2dHs4zLq7nWp9yT"
+  access_expires_mins: 5
+  refresh_expires_hours: 24
+
+api_key:
+  zhipuai_api_key: "f17e980203374e88985e0ccafa8e4451.MUCD5ZyFnE0giTOg"

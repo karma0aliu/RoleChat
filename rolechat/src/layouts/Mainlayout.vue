@@ -11,67 +11,72 @@
 
   <div class="sidebar-main">
     <div class="sidebar-top">
-  <router-link to="/api/new" class="new-chat-btn">
+  <router-link to="/app/new" class="new-chat-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span class="text">{{ t('newChat') }}</span>
     </router-link>
         </div>
 
         <nav class="main-nav">
-  <router-link to="/api/chats" class="nav-item">
+  <router-link to="/app/chats" class="nav-item">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span class="text">{{ t('chats') }}</span>
     </router-link>
         </nav>
 
         <div class="history">
-    <div class="history-title">
-      <span class="text">{{ t('recents') }}</span>
-        </div>
-    <div
-      v-for="topic in topics"
-      :key="topic.id"
-      :class="['history-item-wrapper', { 'has-open-menu': openMenuTopic === topic.id }]"
-      @mouseenter="hoveredTopic = topic.id"
-      @mouseleave="hoveredTopic = null"
-    >
-            <button
+          <div class="history-title">
+            <span class="text">{{ t('recents') }}</span>
+          </div>
+          <template v-if="isLoggedIn">
+            <div
+              v-for="topic in topics"
+              :key="topic.id"
+              :class="['history-item-wrapper', { 'has-open-menu': openMenuTopic === topic.id }]"
+              @mouseenter="hoveredTopic = topic.id"
+              @mouseleave="hoveredTopic = null"
+            >
+              <button
                 @click="navigate({ view: 'chat', topicId: topic.id })"
                 class="history-item"
                 :class="{ active: isActive(topic.id) }"
-            >
+              >
                 <span class="text">{{ topic.title }}</span>
-            </button>
-            <div class="actions" v-show="hoveredTopic === topic.id || openMenuTopic === topic.id">
+              </button>
+              <div class="actions" v-show="hoveredTopic === topic.id || openMenuTopic === topic.id">
                 <button @click.stop="toggleMenu(topic.id)" class="more-btn" :class="{ active: openMenuTopic === topic.id }">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 13C12.5523 13 13 12.5523 13 12C13 11.4477 12.5523 11 12 11C11.4477 11 11 11.4477 11 12C11 12.5523 11.4477 13 12 13Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 13C19.5523 13 20 12.5523 20 12C20 11.4477 19.5523 11 19 11C18.4477 11 18 11.4477 18 12C18 12.5523 18.4477 13 19 13Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 13C5.55228 13 6 12.5523 6 12C6 11.4477 5.55228 11 5 11C4.44772 11 4 11.4477 4 12C4 12.5523 4.44772 13 5 13Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 13C12.5523 13 13 12.5523 13 12C13 11.4477 12.5523 11 12 11C11.4477 11 11 11.4477 11 12C11 12.5523 11.4477 13 12 13Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 13C19.5523 13 20 12.5523 20 12C20 11.4477 19.5523 11 19 11C18.4477 11 18 11.4477 18 12C18 12.5523 18.4477 13 19 13Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 13C5.55228 13 6 12.5523 6 12C6 11.4477 5.55228 11 5 11C4 11.4477 4 12.5523 4 13C4 13 4 13 5 13Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </button>
                 <div v-if="openMenuTopic === topic.id" class="dropdown-menu">
-          <button @click.stop="renameTopic(topic.id)">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16.86 4.49998L19.5 7.13998L9.14 17.5H6.5V14.86L16.86 4.49998Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.5 6.49998L17.5 9.49998" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            {{ t('rename') }}
-                    </button>
-          <button @click.stop="deleteTopic(topic.id)">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H5H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            {{ t('delete') }}
-                    </button>
+                  <button @click.stop="renameTopic(topic.id)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16.86 4.49998L19.5 7.13998L9.14 17.5H6.5V14.86L16.86 4.49998Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.5 6.49998L17.5 9.49998" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    {{ t('rename') }}
+                  </button>
+                  <button @click.stop="deleteTopic(topic.id)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H5H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    {{ t('delete') }}
+                  </button>
                 </div>
+              </div>
             </div>
-        </div>
+          </template>
+          <template v-else>
+            <div class="history-empty"></div>
+          </template>
         </div>
     </div>
 
   <div class="sidebar-footer">
         <div class="user-area">
       <div class="user-profile" @click="toggleUserMenu">
-        <div class="avatar">J</div>
-        <span class="text username">{{ user.username }}</span>
+  <div class="avatar">{{ avatarInitial }}</div>
+  <span class="text username">{{ displayName }}</span>
       </div>
       <div class="user-menu" v-show="userMenuOpen">
         <div class="user-info">
-          <div class="avatar large">J</div>
+          <div class="avatar large">{{ avatarInitial }}</div>
           <div class="meta">
-            <div class="name">{{ user.username }}</div>
+            <div class="name">{{ displayName }}</div>
             <div class="email">{{ user.email }}</div>
           </div>
         </div>
@@ -103,7 +108,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watchEffect } from 'vue'
 
 const props = defineProps({
 activeTopicId: [Number, String, null]
@@ -112,7 +117,13 @@ const emit = defineEmits(['navigate'])
 
 const isSidebarCollapsed = ref(false);
 const userMenuOpen = ref(false);
-const user = ref({ username: 'joshua', email: 'joshua@example.com' });
+import { isLoggedIn, authState, clearAuth } from '../auth'
+const user = ref(authState.user || { username: '', email: '', nickname: '' });
+
+watchEffect(() => {
+  user.value = authState.user || { username: '', email: '', nickname: '' };
+});
+
 const language = ref('zh');
 const i18n = {
   en: {
@@ -176,7 +187,10 @@ const openUserMenu = () => { userMenuOpen.value = true; };
 const closeUserMenu = () => { userMenuOpen.value = false; };
 const toggleUserMenu = (e) => { e?.stopPropagation?.(); userMenuOpen.value = !userMenuOpen.value; };
 const toggleLanguage = () => { language.value = language.value === 'zh' ? 'en' : 'zh'; };
-const logout = () => { console.log('logout clicked'); };
+const logout = () => {
+  clearAuth();
+  userMenuOpen.value = false;
+};
 
 const onDocumentClick = (e) => {
   const target = e.target;
@@ -211,6 +225,12 @@ isSidebarCollapsed.value = !isSidebarCollapsed.value;
 const contentStyle = computed(() => ({
 paddingLeft: isSidebarCollapsed.value ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)'
 }));
+
+const displayName = computed(() => user.value.nickname || user.value.username || user.value.email || '');
+const avatarInitial = computed(() => {
+  const base = user.value.nickname || user.value.username || user.value.email || '';
+  return base ? base.trim().charAt(0).toUpperCase() : '';
+});
 </script>
 
 <style scoped>
@@ -493,6 +513,8 @@ aside.collapsed .actions {
 .dropdown-menu button:hover {
   background-color: var(--accent-hover-bg);
 }
+
+.history-empty { min-height: 8px; }
 
 .user-area { position: relative; }
 .user-profile { display: flex; align-items: center; gap: 10px; cursor: pointer; }

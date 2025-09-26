@@ -6,24 +6,13 @@ services:
     image: postgres:16
     restart: always
     environment:
-      POSTGRES_DB: db_verify
-      POSTGRES_USER: verify_user01
-      POSTGRES_PASSWORD: mydocverifyuser01
+      POSTGRES_DB: db_rolechat
+      POSTGRES_USER: rolechat_user01
+      POSTGRES_PASSWORD: rolechatuser01
     ports:
-      - "5482:5482"
+      - "5432:5432"
     volumes:
-      - rolechat_postgres_data:/var/lib/postgresql/data
-
-
-  redis:
-    image: redis:7-alpine
-    restart: always
-    ports:
-    - "6379:6379"
-    volumes:
-      - rolechat_redis_data:/data
-    command: redis-server --requirepass rolechatback01
+      - rolechat_postgres_data:/var/lib/postgresql/rolechat_data
 
 volumes:
   rolechat_postgres_data:
-  rolechat_redis_data:

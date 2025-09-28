@@ -119,3 +119,22 @@ export async function fetchWithAuth(url: string, options: RequestInit = {}) {
 
   return response;
 }
+
+// API functions
+export async function getTopicsWithLimit(limit: number) {
+  const response = await fetchWithAuth(`/chat/topics/limit?n=${limit}`);
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data?.error || 'Failed to fetch topics');
+  }
+  return response.json();
+}
+
+export async function getTopics() {
+  const response = await fetchWithAuth('/chat/topics');
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data?.error || 'Failed to fetch topics');
+  }
+  return response.json();
+}

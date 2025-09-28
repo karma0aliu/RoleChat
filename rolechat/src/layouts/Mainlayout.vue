@@ -109,6 +109,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watchEffect } from 'vue'
+import { getTopicsWithLimit } from '../api'
 
 const props = defineProps({
 activeTopicId: [Number, String, null]
@@ -153,13 +154,24 @@ const dict = computed(() => i18n[language.value]);
 const t = (key) => dict.value[key] || key;
 const languageLabel = computed(() => (language.value === 'zh' ? '中文' : 'English'));
 
-const topics = ref([
-  { id: 1, title: 'CSS priority tag styling issue - advanced layout', mode: 'chat' },
-  { id: 2, title: 'Web page layout optimization - advanced', mode: 'chat' },
-  { id: 3, title: 'Advanced web layout optimization', mode: 'chat' },
-  { id: 4, title: 'Django database thread safety', mode: 'chat' },
-  { id: 5, title: 'Untitled', mode: 'chat' },
-]);
+const topics = ref([]);
+
+// Load recent topics from API
+const loadRecentTopics = async () => {
+  if (!isLoggedIn.value) {
+    topics.value = [];
+    return;
+  }
+  
+  try {
+    const response = await getTopicsWithLimit(10);
+    topics.value = response.topics || [];
+  } catch (error) {
+    console.error('Failed to load recent topics:', error);
+    // Fallback to empty array
+    topics.value = [];
+  }
+};
 
 const hoveredTopic = ref(null);
 const openMenuTopic = ref(null);
@@ -205,6 +217,17 @@ const onDocumentClick = (e) => {
 
 onMounted(() => {
   document.addEventListener('click', onDocumentClick);
+  // Load recent topics when component mounts
+  loadRecentTopics();
+});
+
+// Watch for login status changes to reload topics
+watchEffect(() => {
+  if (isLoggedIn.value) {
+    loadRecentTopics();
+  } else {
+    topics.value = [];
+  }
 });
 onBeforeUnmount(() => {
   document.removeEventListener('click', onDocumentClick);

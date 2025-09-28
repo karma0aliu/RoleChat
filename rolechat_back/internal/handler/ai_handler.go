@@ -20,13 +20,17 @@ type AIHandler struct {
 type RoleReplyRequest struct {
 	TopicID     uint   `json:"topic_id"`
 	PersonaName string `json:"persona_name"`
+	RoleID      string `json:"role_id"` // 前端发送的角色ID
 	Content     string `json:"content" binding:"required"`
 }
 
 var demoPersonas = map[string]*models.RolePersona{
-	"导师": {Name: "导师", SystemPrompt: "你是一个耐心的中文导师, 给出循序渐进的讲解, 语言温和。", Voice: "mentor"},
-	"搞笑": {Name: "搞笑", SystemPrompt: "你是一名幽默搞笑的朋友, 回答要轻松, 可以加表情, 但保持有用信息。", Voice: "fun"},
-	"严肃": {Name: "严肃", SystemPrompt: "你是一位严谨专业的顾问, 用正式语气回答, 避免多余的感叹。", Voice: "serious"},
+	"导师":       {Name: "导师", SystemPrompt: "你是一个耐心的中文导师, 给出循序渐进的讲解, 语言温和。", Voice: "mentor"},
+	"搞笑":       {Name: "搞笑", SystemPrompt: "你是一名幽默搞笑的朋友, 回答要轻松, 可以加表情, 但保持有用信息。", Voice: "fun"},
+	"严肃":       {Name: "严肃", SystemPrompt: "你是一位严谨专业的顾问, 用正式语气回答, 避免多余的感叹。", Voice: "serious"},
+	"hermione": {Name: "赫敏", SystemPrompt: "你就是赫敏·格兰杰本人。请始终用第一人称'我'来回答，绝不使用第三人称。我是格兰芬多学院的学生，哈利和罗恩是我最好的朋友。我聪明博学，热爱学习，来自麻瓜家庭。", Voice: "hermione"},
+	"harry":    {Name: "哈利", SystemPrompt: "你就是哈利·波特本人。请始终用第一人称'我'来回答，绝不使用第三人称。我是哈利·波特，被称为'大难不死的男孩'，格兰芬多学院学生。赫敏和罗恩是我最好的朋友。我在德思礼家长大，经历过很多冒险。", Voice: "harry"},
+	"ron":      {Name: "罗恩", SystemPrompt: "你就是罗恩·韦斯莱本人。请始终用第一人称'我'来回答，绝不使用第三人称。我是罗恩·韦斯莱，来自韦斯莱家族，格兰芬多学院学生。哈利和赫敏是我最好的朋友。我有很多兄弟姐妹，擅长巫师棋。", Voice: "ron"},
 }
 
 func NewAIHandler(chatSvc service.ChatService, aiSvc service.AIService) *AIHandler {
@@ -41,7 +45,19 @@ func (h *AIHandler) RoleReply(c *gin.Context) {
 	}
 	userIDVal, _ := c.Get("userID")
 	userID := userIDVal.(uint)
-	persona := demoPersonas[req.PersonaName]
+
+	// 优先使用role_id，如果没有则使用persona_name
+	roleKey := req.RoleID
+	if roleKey == "" {
+		roleKey = req.PersonaName
+	}
+
+	persona := demoPersonas[roleKey]
+	if persona == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role/persona: " + roleKey})
+		return
+	}
+
 	_, userMsg, _, err := h.ChatSvc.AddMessage(userID, req.TopicID, "user", req.Content)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -73,7 +89,19 @@ func (h *AIHandler) StreamRoleReply(c *gin.Context) {
 	}
 	userIDVal, _ := c.Get("userID")
 	userID := userIDVal.(uint)
-	persona := demoPersonas[req.PersonaName]
+
+	// 优先使用role_id，如果没有则使用persona_name
+	roleKey := req.RoleID
+	if roleKey == "" {
+		roleKey = req.PersonaName
+	}
+
+	persona := demoPersonas[roleKey]
+	if persona == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role/persona: " + roleKey})
+		return
+	}
+
 	topic, _, _, err := h.ChatSvc.AddMessage(userID, req.TopicID, "user", req.Content)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

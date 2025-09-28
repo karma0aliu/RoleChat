@@ -62,6 +62,41 @@ func (h *ChatHandler) ListTopics(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"topics": res})
 }
 
+func (h *ChatHandler) ListTopicsWithLimit(c *gin.Context) {
+	userIDVal, _ := c.Get("userID")
+	userID := userIDVal.(uint)
+
+	// 获取查询参数 n，默认值为 10
+	limitStr := c.DefaultQuery("n", "10")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid parameter n, must be a positive integer"})
+		return
+	}
+
+	// 限制最大返回数量，防止查询过多数据
+	if limit > 1000 {
+		limit = 1000
+	}
+
+	topics, err := h.Chat.ListUserTopics(userID, limit, 0)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	res := make([]gin.H, 0, len(topics))
+	for _, t := range topics {
+		res = append(res, gin.H{"id": t.ID, "title": t.Title, "updated_at": t.UpdatedAt})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"topics": res,
+		"count":  len(res),
+		"limit":  limit,
+	})
+}
+
 func (h *ChatHandler) ListMessages(c *gin.Context) {
 	userIDVal, _ := c.Get("userID")
 	userID := userIDVal.(uint)

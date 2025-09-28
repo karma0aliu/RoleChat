@@ -45,6 +45,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 		secure.GET("/me", userHandler.GetProfile)
 		secure.POST("/chat/message", chatHandler.SendMessage)
 		secure.GET("/chat/topics", chatHandler.ListTopics)
+		secure.GET("/chat/topics/limit", chatHandler.ListTopicsWithLimit)
 		secure.GET("/chat/topics/:id/messages", chatHandler.ListMessages)
 		if aiHandler != nil {
 			secure.POST("/chat/role-reply", aiHandler.RoleReply)

@@ -14,7 +14,9 @@
     </header>
 
     <section class="list-wrap" role="list" aria-label="历史对话">
-      <template v-if="filteredChats.length">
+      <div v-if="loading" class="loading">加载中...</div>
+      <div v-else-if="error" class="error">{{ error }}</div>
+      <template v-else-if="filteredChats.length">
         <article
           v-for="chat in filteredChats"
           :key="chat.id"
@@ -34,10 +36,10 @@
               />
             </template>
             <template v-else>
-              <h3 class="title" :title="chat.topic">{{ chat.topic }}</h3>
+              <h3 class="title" :title="chat.title">{{ chat.title }}</h3>
             </template>
             <div class="sub">
-              开始时间：{{ formatDateTime(chat.startedAt) }}
+              更新时间：{{ formatDateTime(chat.updated_at) }}
             </div>
           </div>
           <div class="actions">
@@ -55,20 +57,21 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
+import { getTopicsWithLimit } from '../api'
 
 type Chat = {
-  id: string
-  topic: string
-  startedAt: string // ISO string
+  id: number
+  title: string
+  updated_at: string // ISO string
 }
-
-const LS_KEY = 'rolechat.chats'
 
 const chats = ref<Chat[]>([])
 const query = ref('')
+const loading = ref(false)
+const error = ref('')
 
 // rename state
-const editingId = ref<string | null>(null)
+const editingId = ref<number | null>(null)
 const editTitle = ref('')
 const editInputRef = ref<HTMLInputElement | null>(null)
 
@@ -76,9 +79,9 @@ const filteredChats = computed(() => {
   const q = query.value.toLowerCase()
   const arr = !q
     ? chats.value
-    : chats.value.filter(c => c.topic.toLowerCase().includes(q))
-  // sort by startedAt desc
-  return [...arr].sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+    : chats.value.filter(c => c.title.toLowerCase().includes(q))
+  // sort by updated_at desc
+  return [...arr].sort((a, b) => b.updated_at.localeCompare(a.updated_at))
 })
 
 function formatDateTime(iso: string): string {
@@ -91,81 +94,29 @@ function formatDateTime(iso: string): string {
   }
 }
 
-function loadChats(): Chat[] {
+async function loadChats() {
+  loading.value = true
+  error.value = ''
+  
   try {
-    const raw = localStorage.getItem(LS_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as Chat[]
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
+    const response = await getTopicsWithLimit(30)
+    chats.value = response.topics.map((topic: any) => ({
+      id: topic.id,
+      title: topic.title,
+      updated_at: topic.updated_at
+    }))
+  } catch (err) {
+    console.error('Failed to load chats:', err)
+    error.value = '加载对话记录失败，请重试'
+    chats.value = []
+  } finally {
+    loading.value = false
   }
-}
-
-function saveChats(list: Chat[]) {
-  localStorage.setItem(LS_KEY, JSON.stringify(list))
-}
-
-function ensureSeedData() {
-  const now = Date.now()
-  const seedTopics = [
-    '和小助手的第一次对话',
-    '项目需求讨论',
-    '旅行计划',
-    '晚餐菜单头脑风暴',
-    '英语口语练习',
-    '健身计划与打卡',
-    'OKR 月度回顾',
-    '读书笔记：小王子',
-    '周末亲子活动安排',
-    '预算与记账优化',
-    '新功能命名讨论',
-    '学习路线规划：前端进阶'
-  ]
-
-  // 如果已有数据，尽量补足到 10 条；否则从空开始种子到 10 条
-  const existing = chats.value
-  const existingTitles = new Set(existing.map(c => c.topic))
-  const needed = Math.max(0, 10 - existing.length)
-  if (needed === 0 && existing.length > 0) return
-
-  const seeds: Chat[] = []
-  let offset = 0
-  for (const t of seedTopics) {
-    if (seeds.length >= needed) break
-    if (existingTitles.has(t)) continue
-    // 生成不同时间：从最近往前，错开分钟数
-    const startedAt = new Date(now - (offset + 1) * 1000 * 60 * 37).toISOString()
-    seeds.push({ id: cryptoRandomId(), topic: t, startedAt })
-    offset++
-  }
-
-  // 如果种子不够 needed，就继续生成占位主题
-  while (seeds.length < needed) {
-    const i = seeds.length + 1
-    const title = `新的对话 ${i}`
-    const startedAt = new Date(now - (offset + 1) * 1000 * 60 * 29).toISOString()
-    seeds.push({ id: cryptoRandomId(), topic: title, startedAt })
-    offset++
-  }
-
-  const updated = existing.concat(seeds)
-  chats.value = updated
-  saveChats(updated)
-}
-
-function cryptoRandomId(): string {
-  // Prefer crypto if available; fall back to Math.random
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    // @ts-ignore - randomUUID exists in modern browsers
-    return crypto.randomUUID()
-  }
-  return 'id-' + Math.random().toString(36).slice(2, 10)
 }
 
 function startRename(chat: Chat) {
   editingId.value = chat.id
-  editTitle.value = chat.topic
+  editTitle.value = chat.title
   nextTick(() => {
     editInputRef.value?.focus()
     editInputRef.value?.select()
@@ -184,24 +135,23 @@ function confirmRename(chat: Chat) {
   if (idx !== -1) {
     const current = chats.value[idx]
     if (current) {
-      const updated: Chat = { id: current.id, topic: name, startedAt: current.startedAt }
+      const updated: Chat = { id: current.id, title: name, updated_at: current.updated_at }
       chats.value.splice(idx, 1, updated)
-      saveChats(chats.value)
+      // Note: In a real app, you'd want to call an API to update the topic title on the server
     }
   }
   editingId.value = null
 }
 
 function removeChat(chat: Chat) {
-  const ok = window.confirm(`确定要删除“${chat.topic}”吗？此操作不可恢复。`)
+  const ok = window.confirm(`确定要删除"${chat.title}"吗？此操作不可恢复。`)
   if (!ok) return
   chats.value = chats.value.filter(c => c.id !== chat.id)
-  saveChats(chats.value)
+  // Note: In a real app, you'd want to call an API to delete the topic on the server
 }
 
 onMounted(() => {
-  chats.value = loadChats()
-  ensureSeedData()
+  loadChats()
 })
 </script>
 
@@ -249,63 +199,109 @@ onMounted(() => {
   border-radius: 10px;
   padding: 8px;
   max-height: calc(100vh - 200px);
-  background: #fff;
+}
+
+.loading, .error, .empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: #6b7280;
+}
+
+.error {
+  color: #dc2626;
 }
 
 .chat-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px;
+  padding: 12px 16px;
   border-radius: 8px;
+  transition: background-color 0.15s ease;
 }
 
-.chat-item + .chat-item { border-top: 1px solid #f0f2f5; }
+.chat-item:hover {
+  background-color: #f3f4f6;
+}
 
-.meta { min-width: 0; }
+.chat-item + .chat-item {
+  border-top: 1px solid #e5e7eb;
+}
+
+.meta {
+  flex: 1;
+  min-width: 0; /* allow flex child to shrink */
+}
+
 .title {
-  margin: 0 0 4px;
-  font-size: 16px;
-  font-weight: 600;
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-align: left; /* main topic title left-aligned */
 }
-.sub {
-  color: #6b7280;
-  font-size: 12px;
-}
-
-.actions { display: flex; gap: 8px; flex-shrink: 0; }
-
-.btn {
-  padding: 6px 10px;
-  font-size: 13px;
-  line-height: 1;
-  border-radius: 6px;
-  cursor: pointer;
-  border: 1px solid transparent;
-}
-.btn.ghost {
-  background: #f3f4f6;
-  border-color: #e5e7eb;
-}
-.btn.ghost:hover { background: #e5e7eb; }
-.btn.danger {
-  color: #b91c1c;
-  background: #fef2f2;
-  border-color: #fecaca;
-}
-.btn.danger:hover { background: #fee2e2; }
 
 .title-input {
-  width: clamp(160px, 40vw, 520px);
-  padding: 6px 8px;
-  font-size: 16px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  width: 100%;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  border: 1px solid #d0d7de;
+  border-radius: 4px;
+  padding: 2px 6px;
+  outline: none;
 }
 
-.empty { padding: 24px; text-align: center; color: #6b7280; }
+.title-input:focus {
+  border-color: #409eff;
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
+}
+
+.sub {
+  font-size: 12px;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn {
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn.ghost {
+  color: #6b7280;
+  border-color: #d1d5db;
+}
+
+.btn.ghost:hover {
+  color: #374151;
+  border-color: #9ca3af;
+  background-color: #f9fafb;
+}
+
+.btn.danger {
+  color: #dc2626;
+  border-color: #fecaca;
+  background-color: #fef2f2;
+}
+
+.btn.danger:hover {
+  color: #b91c1c;
+  border-color: #f87171;
+  background-color: #fee2e2;
+}
 </style>

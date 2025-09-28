@@ -1,3 +1,5 @@
+demo url：https://github.com/karma0aliu/RoleChat/releases/download/demo/demo.mp4
+
 # RoleChat - AI角色聊天应用
 
 RoleChat是一个基于Vue 3和Go语言的AI角色聊天应用，支持用户创建和管理聊天对话，并与AI角色进行互动。
